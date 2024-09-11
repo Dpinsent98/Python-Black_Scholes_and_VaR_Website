@@ -1,5 +1,5 @@
-ReadMe for Financial Dashboard Application
-Overview
+# Financial Dashboard 
+
 This application is a Streamlit-based dashboard for calculating financial metrics, including:
 
 Value at Risk (VaR) Calculator:
