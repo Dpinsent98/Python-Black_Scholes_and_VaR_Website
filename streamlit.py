@@ -1,4 +1,3 @@
-!pip install scipy
 import streamlit as st
 import numpy as np
 import scipy.stats as sc
