@@ -8,6 +8,7 @@ import matplotlib.ticker as ticker
 import yfinance as yf
 from datetime import date
 import altair as alt
+import streamlit_shadcn_ui as ui
 np.random.seed(42)
 
 st.set_page_config(
@@ -17,7 +18,7 @@ st.set_page_config(
 linkedin_url = "https://www.linkedin.com/in/dragan-pinsent-599665280/"
 st.sidebar.markdown(f'<a href="{linkedin_url}" target="_blank" style="text-decoration: none; color: inherit;"><img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" width="25" height="25" style="vertical-align: middle; margin-right: 10px;">`Dragan Pinsent`</a>', unsafe_allow_html=True)
 
-page = st.sidebar.radio('Page Select:', ['Black Scholes Option Pricer', 'VaR Calculator', 'Min Variance Portfolio Tool', 'Monte Carlo Options Pricer'])
+page = st.sidebar.radio('Page Select:', ['Black Scholes Option Pricer', 'VaR Calculator', 'Min Variance Portfolio Tool', 'Monte Carlo Options Pricer', 'Implied Volatility'])
 
 prev_VaR = 0
 
@@ -707,8 +708,8 @@ elif page == 'Monte Carlo Options Pricer':
     st.markdown('<h1 class="title">Monte Carlo Option Pricer</h1>', unsafe_allow_html=True)
 
     options_type = st.sidebar.selectbox('Option Type', ['Standard European', 'Binary Option', 'Asian Floating Strike', 
-                                                        'Asian Fixed Stike', '## Below Not Finished##','Knock Out Option', 'Knock In Options', 
-                                                        'Double Knock Out', 'Double Knock In', 'Look Back Option', 
+                                                        'Asian Fixed Strike','Knock Out Option', 'Knock In Option',  
+                                                        'Double Knock Out', 'Double Knock In', '## Below Not Finished##','Look Back Option', 
                                                         'Knock In and Knock Out Option', 'Gap Option', 'Choser Option'])
 
     variance_proceedure = st.sidebar.selectbox('Variance Reducton Proceedure', ['None','Antithetic Variates', 'Moment Matching','## Below Not Finished ##','Importance Sampling', 'Quasi Random Sequence'])
@@ -719,6 +720,14 @@ elif page == 'Monte Carlo Options Pricer':
 
     if options_type == 'Binary Option':
         Binary_payout = st.sidebar.number_input('Binary Payout' , min_value = 0, value = 10)
+    elif options_type in ['Knock Out Option', 'Knock In Option']:
+        H = st.sidebar.number_input("Barrier Price:", min_value = 0.001, value = 50.00, step = 0.5, format="%0.2f")
+    elif options_type in ['Double Knock Out', 'Double Knock In']:
+        L = st.sidebar.number_input("Lower Barrier:", min_value = 0.001, value = 50.00, step = 0.5, format="%0.2f")
+        U = st.sidebar.number_input("Upper Barrier:", min_value = 0.001, value = 50.00, step = 0.5, format="%0.2f")
+    elif options_type == 'Knock In and Knock Out Option':
+        In = st.sidebar.number_input("Knock In Barrier:", min_value = 0.001, value = 50.00, step = 0.5, format="%0.2f")
+        Out = st.sidebar.number_input("Knock Out Barrier:", min_value = 0.001, value = 50.00, step = 0.5, format="%0.2f")
 
 
     Strike = st.sidebar.number_input("Strike Price:", min_value = 0.001, value = 50.00, step = 0.01, format="%0.2f")
@@ -728,9 +737,7 @@ elif page == 'Monte Carlo Options Pricer':
     Stock = st.sidebar.number_input("Asset Price:", min_value = 0.001, value = 50.00, step = 0.5, format="%0.2f")
     NLoops= st.sidebar.number_input('Number of Loops', min_value = 100, value = 100, step = 2)
     NSteps= st.sidebar.number_input('Number of Steps', min_value = 1, value = 100) + 1
-
-    check_box = st.sidebar.checkbox('Would You Like Graphics? (Not Recommended for Large Simulations)', value=True)
-
+    check_box = st.sidebar.checkbox('Graphics (Not Recommended for Large Simulations)', value=True)
     Button = st.sidebar.button('Run Simulation')
 
     def standard_sim(distribution, dof):
@@ -762,6 +769,7 @@ elif page == 'Monte Carlo Options Pricer':
         if distribution == 'Normal':
             for loop in range(0,NLoops,2):
                 monte_sim[loop, 0] = Stock
+                monte_sim[loop +1, 0] = Stock
                 for step in range(1,NSteps):
                     dt = T / NSteps  # Time increment
                     random_normal = np.random.normal(0, 1)  # Generate a standard normal random variable
@@ -774,6 +782,7 @@ elif page == 'Monte Carlo Options Pricer':
         else:
             for loop in range(0,NLoops,2):
                 monte_sim[loop, 0] = Stock
+                monte_sim[loop +1, 0] = Stock
                 for step in range(1,NSteps):
                     dt = T / NSteps  # Time increment
                     random_t = np.random.standard_t(dof)  # Generate a standard normal random variable
@@ -809,9 +818,10 @@ elif page == 'Monte Carlo Options Pricer':
         else:
             for loop in range(NLoops):
                 monte_sim[loop, 0] = Stock
+                matched_sim[loop, 0] = Stock
                 for step in range(1,NSteps):
                     dt = T / NSteps  # Time increment
-                    rand_samples[loop, step] = random_t = np.random.standard_t(dof)(0, 1)  # Generate a standard normal random variable
+                    rand_samples[loop, step] = np.random.standard_t(dof) # Generate a standard normal random variable
                     monte_sim[loop, step] = (monte_sim[loop, step - 1] *
                                             np.exp((r - (Vol ** 2) / 2) * dt + Vol * np.sqrt(dt) * rand_samples[loop, step]))
             rand_mean = np.mean(rand_samples, axis = 1)
@@ -867,7 +877,7 @@ elif page == 'Monte Carlo Options Pricer':
             if distribution == 'Normal':
                 monte_sim = moment_matching('Normal',0)
             else:
-                monte_sim = antithetic_method('t', dof)
+                monte_sim = moment_matching('t', dof)
                 
         final_price = monte_sim[:,-1]
 
@@ -923,8 +933,6 @@ elif page == 'Monte Carlo Options Pricer':
             moving_strike_call_price = np.exp(-r *T) *np.mean(AsiaCallPayout)
             moving_strike_put_price = np.exp(-r *T) *np.mean(AsiaPutPayout)
 
-            #moving_stock_call_price = np.exp(-r *T) * np.mean(average_stock_call)
-
             col1.metric('Estimated Moving Strike Call Price:', np.round(moving_strike_call_price,2))
             col2.metric('Estimated Moving Stock Put Price:', np.round(moving_strike_put_price,2))
 
@@ -932,14 +940,156 @@ elif page == 'Monte Carlo Options Pricer':
 
             AsiaCallPayout = []
             AsiaPutPayout = []
+            sim_mean = monte_sim.mean(axis = 1)[0]
 
-            sim_mean = monte_sim.mean(axis = 1)[i]
+            AsiaFixedCallPayout = np.maximum(sim_mean - Strike, 0)
+            AsiaFixedPutPayout = np.maximum(Strike- sim_mean, 0)
 
-            fixed_strike_call_pay = np.exp(-r*T)*np.mean(np.maximum(sim_mean - Stike, 0))
-            fixed_strike_put_pay = np.exp(-r*T)*np.mean(np.maximum(Strike - sim_mean, 0))
+            fixed_strike_call_price = np.exp(-r *T) *np.mean(AsiaFixedCallPayout)
+            fixed_strike_put_price = np.exp(-r *T) *np.mean(AsiaFixedPutPayout)
 
-            col1.metric('Estimated Fixed Strike Call Price:', np.round(fixed_strike_call_pay,2))
-            col2.metric('Estimated Fixed Stock Put Price:', np.round(fixed_strike_put_pay,2))
+
+            col1.metric('Estimated Fixed Strike Call Price:', np.round(fixed_strike_call_price,2))
+            col2.metric('Estimated Fixed Stock Put Price:', np.round(fixed_strike_put_price,2))
+        
+        elif options_type == 'Knock Out Option':
+
+            KnockOutCall = []
+            KnockOutPut = []
+            i = 0
+
+            sim_max = monte_sim.max(axis = 1)
+            sim_min = monte_sim.min(axis = 1)
+            
+            if H >= Stock:
+                for price in sim_max:
+                    if price < H and final_price[i] > Strike:
+                        KnockOutCall.append(final_price[i] - Strike)
+                        KnockOutPut.append(0)
+                        i += 1
+                    elif price < H and final_price[i] < Strike:
+                        KnockOutPut.append(Strike - final_price[i])
+                        KnockOutCall.append(0)
+                        i += 1
+                    else:
+                        KnockOutPut.append(0)
+                        KnockOutCall.append(0)
+                        i +=1
+            elif H < Stock:
+                for price in sim_min:    
+                    if price > H and final_price[i] > Strike:
+                        KnockOutCall.append(final_price[i] - Strike)
+                        KnockOutPut.append(0)
+                        i += 1
+                    elif price > H and final_price[i] < Strike:
+                        KnockOutPut.append(final_price[i] - Strike)
+                        KnockOutCall.append(0)
+                        i += 1
+                    else:
+                        KnockOutPut.append(0)
+                        KnockOutCall.append(0)
+                        i += 1
+
+            knock_out_call_price = np.exp(-r *T) *np.mean(KnockOutCall)
+            knock_out_put_price = np.exp(-r *T) *np.mean(KnockOutPut)
+
+            col1.metric('Estimated Knock In Call Price:', np.round(knock_out_call_price,2))
+            col2.metric('Estimated Knock In Put Price:', np.round(knock_out_put_price,2))
+        
+        elif options_type == 'Knock In Option':
+
+            KnockInCall = []
+            KnockInPut = []
+            i = 0
+
+            sim_max = monte_sim.max(axis = 1)
+            sim_min = monte_sim.min(axis = 1)
+            
+            if H >= Stock:
+                for price in sim_max:
+                    if price > H and final_price[i] > Strike:
+                        KnockInCall.append(final_price[i] - Strike)
+                        KnockInPut.append(0)
+                        i += 1
+                    elif price > H and final_price[i] < Strike:
+                        KnockInCall.append(Strike - final_price[i])
+                        KnockInPut.append(0)
+                        i += 1
+                    else:
+                        KnockInCall.append(0)
+                        KnockInPut.append(0)
+                        i +=1
+            elif H < Stock:
+                for price in sim_min:    
+                    if price < H and final_price[i] > Strike:
+                        KnockInCall.append(final_price[i] - Strike)
+                        KnockInPut.append(0)
+                        i += 1
+                    elif price < H and final_price[i] < Strike:
+                        KnockInCall.append(final_price[i] - Strike)
+                        KnockInPut.append(0)
+                        i += 1
+                    else:
+                        KnockInCall.append(0)
+                        KnockInPut.append(0)
+                        i += 1
+            
+            knock_out_call_price = np.exp(-r *T) *np.mean(KnockInCall)
+            knock_out_put_price = np.exp(-r *T) *np.mean(KnockOutPut)
+
+            col1.metric('Estimated Knock In Call Price:', np.round(knock_out_call_price,2))
+            col2.metric('Estimated Knock In Put Price:', np.round(knock_out_put_price,2))
+
+        elif options_type == 'Double Knock Out':
+
+            DoubleKnockOutCall = []
+            DoubleKnockOutPut = []
+
+            sim_max = monte_sim.max(axis = 1)
+            sim_min = monte_sim.min(axis = 1)
+            
+            for price_pos in range(len(sim_max)):
+                if sim_max[price_pos] < U and sim_min[price_pos] > L and final_price[price_pos] > Strike:
+                    DoubleKnockOutCall.append(final_price[price_pos] - Strike)
+                    DoubleKnockOutPut.append(0)
+                elif sim_max[price_pos] < U and sim_min[price_pos] > L and final_price[price_pos] < Strike:
+                    DoubleKnockOutPut.append(Strike - final_price[price_pos])
+                    DoubleKnockOutCall.append(0)
+                else:
+                    DoubleKnockOutCall.append(0)
+                    DoubleKnockOutPut.append(0)
+
+            DoubleKnockOutCallPrice = np.exp(-r *T) *np.mean(DoubleKnockOutCall)
+            DoubleKnockOutPutPrice = np.exp(-r *T) *np.mean(DoubleKnockOutPut)
+
+            col1.metric('Estimated Double Knock Out Call Price:', np.round(DoubleKnockOutCallPrice,2))
+            col2.metric('Estimated Double Knock Out Put Price:', np.round(DoubleKnockOutPutPrice,2))
+        
+        elif options_type == 'Double Knock In':
+
+            DoubleKnockInCall = []
+            DoubleKnockInPut = []
+
+            sim_max = monte_sim.max(axis = 1)
+            sim_min = monte_sim.min(axis = 1)
+            
+            for price_pos in range(len(sim_max)):
+                if (sim_max[price_pos] > U or sim_min[price_pos] < L) and final_price[price_pos] > Strike:
+                    DoubleKnockInCall.append(final_price[price_pos] - Strike)
+                    DoubleKnockInPut.append(0)
+                elif (sim_max[price_pos] > U or sim_min[price_pos] < L) and final_price[price_pos] < Strike:
+                    DoubleKnockInPut.append(Strike - final_price[price_pos])
+                    DoubleKnockInCall.append(0)
+                else:
+                    DoubleKnockInCall.append(0)
+                    DoubleKnockInPut.append(0)
+
+            DoubleKnockInCallPrice = np.exp(-r *T) *np.mean(DoubleKnockInCall)
+            DoubleKnockInPutPrice = np.exp(-r *T) *np.mean(DoubleKnockInPut)
+
+            col1.metric('Estimated Knock In Call Price:', np.round(DoubleKnockInCallPrice,2))
+            col2.metric('Estimated Knock In Put Price:', np.round(DoubleKnockInPutPrice,2))
+
 
         # Prepare data for Altair
         time_steps = np.arange(NSteps)
@@ -976,3 +1126,13 @@ elif page == 'Monte Carlo Options Pricer':
 
             # Display the chart in Streamlit
             st.altair_chart(chart, use_container_width=True)
+
+elif page == 'Implied Volatility':
+    st.title('Implied Volatility Calculator')
+
+    K = st.sidebar.number_input("Strike Price:", min_value = 0.001, value = 50.00, step = 0.01, format="%0.2f")
+    T = st.sidebar.number_input("Time Till Expiry (Years):", min_value = 0.001, value = 2.00, step = 0.001, format="%0.3f")
+    r = st.sidebar.number_input("Risk Free Interest Rate (%):", min_value = 0.00, value = 5.00, step = 0.01, format="%0.2f")/100
+    Q = st.sidebar.number_input("Dividend Rate (%):", min_value = 0.00, value = 2.00, step = 0.01, format="%0.2f")/100
+    V = st.sidebar.number_input("Volatility (%):", min_value = 0.00, value = 10.00, step = 0.01, format="%0.2f")/100
+    S = st.sidebar.number_input("Asset Price:", min_value = 0.001, value = 50.00, step = 0.5, format="%0.2f")
