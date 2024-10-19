@@ -7,3 +7,4 @@ matplotlib
 seaborn
 yfinance
 streamlit-pills
+streamlit_tree_select
