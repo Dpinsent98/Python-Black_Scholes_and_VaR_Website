@@ -1,4 +1,3 @@
-!pip install streamlit-pills
 import streamlit as st
 import numpy as np
 import scipy.stats as sc
