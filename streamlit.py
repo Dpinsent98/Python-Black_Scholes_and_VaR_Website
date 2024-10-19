@@ -9,6 +9,9 @@ import yfinance as yf
 from datetime import date
 import altair as alt
 import streamlit_shadcn_ui as ui
+import time
+from streamlit_pills import pills
+from streamlit_tree_select import tree_select
 np.random.seed(42)
 
 st.set_page_config(
@@ -18,18 +21,68 @@ st.set_page_config(
 linkedin_url = "https://www.linkedin.com/in/dragan-pinsent-599665280/"
 st.sidebar.markdown(f'<a href="{linkedin_url}" target="_blank" style="text-decoration: none; color: inherit;"><img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" width="25" height="25" style="vertical-align: middle; margin-right: 10px;">`Dragan Pinsent`</a>', unsafe_allow_html=True)
 
-page = st.sidebar.radio('Page Select:', ['Black Scholes Option Pricer', 'VaR Calculator', 'Min Variance Portfolio Tool', 'Monte Carlo Options Pricer', 'Implied Volatility'])
+with st.sidebar:
+    main_page = pills('Page', ['Home', 'Black Scholes Option Pricer', 'Portfolio Tools', 'Monte Carlo Pricer'])
+    if main_page == 'Portfolio Tools':
+        page = pills('Sub Page', ['Value at Risk Calculator', 'Minimum Variance Portfolio Tool'])
+    elif main_page == 'Black Scholes Option Pricer':
+        page = pills('Sub Page', ['Black Scholes Option Pricer', 'Implied Volatility Calculator'])
+    elif main_page == 'Home':
+        page = 'Home'
+    else:
+        page = 'Monte Carlo Options Pricer'
+
 
 prev_VaR = 0
 
-## VAR Calculator
-if page == 'VaR Calculator':
+st.markdown("""
+        <style>
+               .block-container {
+                    padding-top: 3rem;
+                    padding-bottom: 0rem;
+                    padding-left: 2rem;
+                    padding-right: 2rem;
+                }
+        </style>
+        """, unsafe_allow_html=True)
+if page == 'Home':
     st.markdown(
         """
         <style>
         .title {
             text-align: center;
         }
+        h1 {
+        font-size: 34px;
+    }
+    h2 {
+        font-size: 24px;
+    }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+    st.markdown('<h1 class="title">About</h1>', unsafe_allow_html=True)
+
+    st.write('Black Scholes Option Pricer:')
+    st.write('This Black Scholes option pricer is based of the equations outlined in Options, Futures and Other Derivatives (John C, Hull, 8th Edition) primarily chapter 14 where initial Black Scholes Formulas are outlined, chapter 18 where the first order greeks are shown and chapter 25 where the adjusted barrier formulas are introduced.')
+
+    st.write('Portfolio Tool:')
+    st.write('The motivating literature behind these tools is the book Value at Risk: The New Benchmark for Managing Financial Risk (Phillipe Jorion, 2nd Edition) mainly chapter 7 where Marginal and Incremental VaR are outlined, chapter 9 where Delta Normal (Parametric) and Historical VaR are describe and chapter 12 which explains the simulation of correlated random variables for the Monte Carlo Simularion.')
+
+    st.write('Monte Carlo Pricer:')
+    st.write('This is a converted version of the code written in MATLAB for my BSc dissertation comparing variance reduction procedures for the pricing of single and double barrier options with the added implementation of further option types and the Heston volatility model. This is once again based of Options, Futures and Other Derivatives (John C, Hull, 8th Edition) chapter 13, 19 and 26.')
+## VAR Calculator
+elif page == 'Value at Risk Calculator':
+    st.markdown(
+        """
+        <style>
+        .title {
+            text-align: center;
+        }
+        h1 {
+        font-size: 34px;
+    }
         </style>
         """,
         unsafe_allow_html=True
@@ -200,11 +253,13 @@ elif page == 'Black Scholes Option Pricer':
         .title {
             text-align: center;
         }
+        h1 {
+        font-size: 34px;
+    }
         </style>
         """,
         unsafe_allow_html=True
     )
-
     # Streamlit app with custom CSS class for the title
     st.markdown('<h1 class="title">Black Scholes Option Pricer</h1>', unsafe_allow_html=True)
 
@@ -290,7 +345,17 @@ elif page == 'Black Scholes Option Pricer':
             Call = C_di
             Put = P_di
 
-    col1, col2 = st.columns(2)
+    if Call < 0:
+        Call = 0
+    elif Call > C:
+        Call = C
+
+    if Put < 0:
+        Put = 0
+    elif Put > P:
+        Put = P
+
+    emp, col1, col2 = st.columns([1.1,2,2])
     col1.metric(label = 'Call Price', value =  np.round(Call,3))
     col2.metric(label = 'Put Price', value =  np.round(Put,3))
 
@@ -404,7 +469,7 @@ elif page == 'Black Scholes Option Pricer':
     </style>
     """, unsafe_allow_html=True)
 
-    col1, col2, col3, col4 = st.columns(4)
+    emp, col1, col2, col3, col4 = st.columns([0.5,1,1,1,1])
    
     # Delta
     col1.markdown("""
@@ -586,7 +651,7 @@ elif page == 'Black Scholes Option Pricer':
     C_di, C_do, C_ui, C_uo, P_ui, P_uo, P_do, P_di = Barrier_Heatmap_Calculations(K, T, r, Q, VH, SH, H)
 
     def options_heatmap(call_option, put_option):
-        emp1, col1, emp2 =st.columns([1,5,1])
+        emp1, col1, emp2 =st.columns([0.8,5,1])
         fig1, ax1 = plt.subplots()
         sns.heatmap(call_option, annot=True, cmap='Spectral', cbar=False, linewidths=0.5, fmt='.2f', ax=ax1, xticklabels=np.round(SH, 2), yticklabels=np.round(VH, 3))
         ax1.set_xlabel('Spot Price')
@@ -621,13 +686,16 @@ elif page == 'Black Scholes Option Pricer':
         elif H >= K:
             options_heatmap(C_ui,P_ui)
 
-elif page == 'Min Variance Portfolio Tool':
+elif page == 'Minimum Variance Portfolio Tool':
     st.markdown(
         """
         <style>
         .title {
             text-align: center;
         }
+        h1 {
+        font-size: 34px;
+    }
         </style>
         """,
         unsafe_allow_html=True
@@ -699,6 +767,9 @@ elif page == 'Monte Carlo Options Pricer':
         .title {
             text-align: center;
         }
+        h1 {
+        font-size: 34px;
+    }
         </style>
         """,
         unsafe_allow_html=True
@@ -707,19 +778,27 @@ elif page == 'Monte Carlo Options Pricer':
     # Streamlit app with custom CSS class for the title
     st.markdown('<h1 class="title">Monte Carlo Option Pricer</h1>', unsafe_allow_html=True)
 
-    options_type = st.sidebar.selectbox('Option Type', ['Standard European', 'Binary Option', 'Asian Floating Strike', 
+    Model = st.sidebar.selectbox('Model:', ['Black-Scholes Model', 'Heston Volatility Model'])
+
+    options_type = st.sidebar.selectbox('Option Type:', ['Standard European', 'Binary Option', 'Asian Floating Strike', 
                                                         'Asian Fixed Strike','Knock Out Option', 'Knock In Option',  
                                                         'Double Knock Out', 'Double Knock In', '## Below Not Finished##','Look Back Option', 
                                                         'Knock In and Knock Out Option', 'Gap Option', 'Choser Option'])
 
-    variance_proceedure = st.sidebar.selectbox('Variance Reducton Proceedure', ['None','Antithetic Variates', 'Moment Matching','## Below Not Finished ##','Importance Sampling', 'Quasi Random Sequence'])
+    if Model == 'Black-Scholes Model':
+        variance_proceedure = st.sidebar.selectbox('Variance Reducton Proceedure:', ['None','Antithetic Variates', 'Moment Matching','## Below Not Finished ##','Importance Sampling', 'Quasi Random Sequence'])
+    else:
+        kappa = st.sidebar.number_input('Rate of Mean Reversion', min_value = 0, value = 10)
+        Vol = st.sidebar.number_input("Long Term Mean Variance (%):", min_value = 0.00, value = 10.00, step = 0.01, format="%0.2f")/100
+        sigma = st.sidebar.number_input("Volatility of Volatility (%):", min_value = 0.00, value = 10.00, step = 0.01, format="%0.2f")/100
+        rho = st.sidebar.number_input("Correlation of Asset and Volatility", min_value= -1.00, value = 0.00, max_value= 1.00, format= "%0.2f")
 
-    distribution = st.sidebar.selectbox('Assumed Distribution', ['Normal', 't-distribution'])
+    distribution = st.sidebar.selectbox('Assumed Distribution:', ['Normal', 't-distribution'])
     if distribution == 't-distribution':
-        dof = st.sidebar.number_input('Degrees of Freedom', min_value= 1, value = 5)
+        dof = st.sidebar.number_input('Degrees of Freedom:', min_value= 1, value = 5)
 
     if options_type == 'Binary Option':
-        Binary_payout = st.sidebar.number_input('Binary Payout' , min_value = 0, value = 10)
+        Binary_payout = st.sidebar.number_input('Binary Payout:' , min_value = 0, value = 10)
     elif options_type in ['Knock Out Option', 'Knock In Option']:
         H = st.sidebar.number_input("Barrier Price:", min_value = 0.001, value = 50.00, step = 0.5, format="%0.2f")
     elif options_type in ['Double Knock Out', 'Double Knock In']:
@@ -733,10 +812,11 @@ elif page == 'Monte Carlo Options Pricer':
     Strike = st.sidebar.number_input("Strike Price:", min_value = 0.001, value = 50.00, step = 0.01, format="%0.2f")
     T = st.sidebar.number_input("Time Till Expiry (Years):", min_value = 0.001, value = 2.00, step = 0.001, format="%0.3f")
     r = st.sidebar.number_input("Risk Free Interest Rate (%):", min_value = 0.00, value = 5.00, step = 0.01, format="%0.2f")/100
-    Vol = st.sidebar.number_input("Volatility (%):", min_value = 0.00, value = 10.00, step = 0.01, format="%0.2f")/100
+    if Model == 'Black-Scholes Model':
+        Vol = st.sidebar.number_input("Volatility (%):", min_value = 0.00, value = 10.00, step = 0.01, format="%0.2f")/100
     Stock = st.sidebar.number_input("Asset Price:", min_value = 0.001, value = 50.00, step = 0.5, format="%0.2f")
-    NLoops= st.sidebar.number_input('Number of Loops', min_value = 100, value = 100, step = 2)
-    NSteps= st.sidebar.number_input('Number of Steps', min_value = 1, value = 100) + 1
+    NLoops= st.sidebar.number_input('Number of Loops:', min_value = 100, value = 100, step = 2)
+    NSteps= st.sidebar.number_input('Number of Steps:', min_value = 1, value = 100) + 1
     check_box = st.sidebar.checkbox('Graphics (Not Recommended for Large Simulations)', value=True)
     Button = st.sidebar.button('Run Simulation')
 
@@ -833,52 +913,81 @@ elif page == 'Monte Carlo Options Pricer':
                                             np.exp((r - (Vol ** 2) / 2) * dt + Vol * np.sqrt(dt) * (rand_samples[loop, step] - rand_mean[loop])/rand_std[loop]))
             return matched_sim
         
-        def sobol_sim(distribution, dof):
-            onte_sim = np.zeros(shape = (NLoops, NSteps))
+    def sobol_sim(distribution, dof):
+        monte_sim = np.zeros(shape = (NLoops, NSteps))
 
-            if distribution == 'Normal':
-                for loop in range(NLoops):
-                    monte_sim[loop, 0] = Stock
-                    for step in range(1,NSteps):
-                        dt = T / NSteps  # Time increment
-                        random_normal = np.random.normal(0, 1)  # Generate a standard normal random variable
-                        monte_sim[loop, step] = (monte_sim[loop, step - 1] *
-                                                np.exp((r - (Vol ** 2) / 2) * dt + Vol * np.sqrt(dt) * random_normal))
-                return monte_sim
-
-            else:
-                for loop in range(NLoops):
-                    monte_sim[loop, 0] = Stock
-                    for step in range(1,NSteps):
-                        dt = T / NSteps  # Time increment
-                        random_t = np.random.stmandard_t(dof)  # Generate a standard normal random variable
-                        monte_sim[loop, step] = (monte_sim[loop, step - 1] *
-                                                np.exp((r - (Vol ** 2) / 2) * dt + Vol * np.sqrt(dt) * random_t))
+        if distribution == 'Normal':
+            for loop in range(NLoops):
+                monte_sim[loop, 0] = Stock
+                for step in range(1,NSteps):
+                    dt = T / NSteps  # Time increment
+                    random_normal = np.random.normal(0, 1)  # Generate a standard normal random variable
+                    monte_sim[loop, step] = (monte_sim[loop, step - 1] *
+                                            np.exp((r - (Vol ** 2) / 2) * dt + Vol * np.sqrt(dt) * random_normal))
             return monte_sim
 
+        else:
+            for loop in range(NLoops):
+                monte_sim[loop, 0] = Stock
+                for step in range(1,NSteps):
+                    dt = T / NSteps  # Time increment
+                    random_t = np.random.stmandard_t(dof)  # Generate a standard normal random variable
+                    monte_sim[loop, step] = (monte_sim[loop, step - 1] *
+                                            np.exp((r - (Vol ** 2) / 2) * dt + Vol * np.sqrt(dt) * random_t))
+        return monte_sim
+    
+    def Heston_model(distribution, dof):
+        # Brownian motions
+        if distribution == 'Normal':
+            Z1 = np.random.normal(size=(NLoops, NSteps))
+            Z2 = np.random.normal(size=(NLoops, NSteps))
+        else:
+            Z1 = np.random.standard_t(dof ,size=(NLoops,NSteps))
+            Z2 = np.random.standard_t(dof ,size=(NLoops,NSteps))
+        # Correlated Brownian motions
+        dW1 = np.sqrt(T/NSteps) * Z1
+        dW2 = rho * dW1 + np.sqrt(1 - rho**2) * np.sqrt((T/NSteps)) * Z2
+
+        # Initialize asset price and variance
+        monte_sim = np.zeros((NLoops, NSteps))
+        vol_sim = np.zeros((NLoops, NSteps))
+        monte_sim[:, 0] = Stock
+        vol_sim[:, 0] = Vol
+
+        # Simulate Heston model
+        for t in range(1, NSteps):
+            vol_sim[:, t] = np.maximum(vol_sim[:, t-1] + kappa * (Vol - vol_sim[:, t-1]) * (T/NSteps) + sigma * np.sqrt(vol_sim[:, t-1]) * dW2[:, t-1], 0)
+            monte_sim[:, t] = monte_sim[:, t-1] * np.exp((r - 0.5 * vol_sim[:, t-1]) * (T/NSteps) + np.sqrt(vol_sim[:, t-1]) * dW1[:, t-1])
+        return monte_sim, vol_sim
     col1, col2 = st.columns(2)
 
     if Button == True:
-
-        if variance_proceedure == 'None':
-            
-            if distribution == 'Normal':
-                monte_sim = standard_sim('Normal',0)
-            else:
-                monte_sim = standard_sim('t', dof)
-        
-        elif variance_proceedure == 'Antithetic Variates':
-            if distribution == 'Normal':
-                monte_sim = antithetic_method('Normal',0)
-            else:
-                monte_sim = antithetic_method('t', dof)
-
-        elif variance_proceedure == 'Moment Matching':
-            if distribution == 'Normal':
-                monte_sim = moment_matching('Normal',0)
-            else:
-                monte_sim = moment_matching('t', dof)
+        t0 = time.time()
+        if Model == 'Black-Scholes Model':
+            if variance_proceedure == 'None':
                 
+                if distribution == 'Normal':
+                    monte_sim = standard_sim('Normal',0)
+                else:
+                    monte_sim = standard_sim('t', dof)
+            
+            elif variance_proceedure == 'Antithetic Variates':
+                if distribution == 'Normal':
+                    monte_sim = antithetic_method('Normal',0)
+                else:
+                    monte_sim = antithetic_method('t', dof)
+
+            elif variance_proceedure == 'Moment Matching':
+                if distribution == 'Normal':
+                    monte_sim = moment_matching('Normal',0)
+                else:
+                    monte_sim = moment_matching('t', dof)
+        else:
+            if distribution == 'Normal':
+                    monte_sim, vol_sim = Heston_model('Normal',0)
+            else:
+                    monte_sim, vol_sim = Heston_model('t', dof)
+              
         final_price = monte_sim[:,-1]
 
         if options_type == 'Standard European':
@@ -1089,6 +1198,8 @@ elif page == 'Monte Carlo Options Pricer':
 
             col1.metric('Estimated Knock In Call Price:', np.round(DoubleKnockInCallPrice,2))
             col2.metric('Estimated Knock In Put Price:', np.round(DoubleKnockInPutPrice,2))
+    
+        t1 = time.time()
 
 
         # Prepare data for Altair
@@ -1127,12 +1238,26 @@ elif page == 'Monte Carlo Options Pricer':
             # Display the chart in Streamlit
             st.altair_chart(chart, use_container_width=True)
 
-elif page == 'Implied Volatility':
-    st.title('Implied Volatility Calculator')
+        st.sidebar.write(f'Time Taken: {np.round(t1 - t0, 3)} seconds')
+
+elif page == 'Implied Volatility Calculator':
+    st.markdown(
+    """
+    <style>
+    .title {
+        text-align: center;
+    }
+    h1 {
+    font-size: 34px;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+    )
+    st.markdown('<h1 class="title">Implied Volatility Calculator</h1>', unsafe_allow_html=True)
 
     K = st.sidebar.number_input("Strike Price:", min_value = 0.001, value = 50.00, step = 0.01, format="%0.2f")
     T = st.sidebar.number_input("Time Till Expiry (Years):", min_value = 0.001, value = 2.00, step = 0.001, format="%0.3f")
     r = st.sidebar.number_input("Risk Free Interest Rate (%):", min_value = 0.00, value = 5.00, step = 0.01, format="%0.2f")/100
     Q = st.sidebar.number_input("Dividend Rate (%):", min_value = 0.00, value = 2.00, step = 0.01, format="%0.2f")/100
-    V = st.sidebar.number_input("Volatility (%):", min_value = 0.00, value = 10.00, step = 0.01, format="%0.2f")/100
     S = st.sidebar.number_input("Asset Price:", min_value = 0.001, value = 50.00, step = 0.5, format="%0.2f")
