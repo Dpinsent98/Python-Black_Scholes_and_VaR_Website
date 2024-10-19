@@ -8,7 +8,6 @@ import matplotlib.ticker as ticker
 import yfinance as yf
 from datetime import date
 import altair as alt
-import streamlit_shadcn_ui as ui
 import time
 from streamlit_pills import pills
 from streamlit_tree_select import tree_select
